@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
 using LMS.DTOs;
+using LMS.Models;
 
 namespace LMS.Controllers
 {
@@ -52,6 +53,30 @@ namespace LMS.Controllers
 
             return Ok(result);
         }
+        [HttpGet("Groups")]
+        public async Task<IActionResult> GetGroups(string programmeName, string batchName)
+        {
+            var result = new List<object>();
+            using var conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
+            using var cmd = new SqlCommand(@"
+        SELECT GroupName
+        FROM Groups
+        WHERE ProgrammeName = @ProgrammeName AND BatchName = @BatchName
+    ", conn);
+
+            cmd.Parameters.AddWithValue("@ProgrammeName", programmeName);
+            cmd.Parameters.AddWithValue("@BatchName", batchName);
+
+            await conn.OpenAsync();
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                result.Add(reader["GroupName"].ToString());
+            }
+
+            return Ok(result);
+        }
+
 
         [HttpGet("by-instructor/{instructorId}")]
         public async Task<IActionResult> GetCoursesByInstructor(int instructorId)
@@ -260,6 +285,117 @@ namespace LMS.Controllers
             await updateCmd.ExecuteNonQueryAsync();
 
             return Ok(new { message = "Course assignment updated successfully" });
+        }
+        // ? Extending existing CourseController safely without modifying models
+
+        [HttpPost("AssignSubjects")]
+        public async Task<IActionResult> AssignSubjects([FromBody] SubjectAssignmentRequest request)
+        {
+            using var conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
+            await conn.OpenAsync();
+
+            // Step 1: Delete existing assignment for combination
+            var deleteCmd = new SqlCommand(@"
+        DELETE FROM CourseAssignments
+        WHERE ProgrammeName = @Programme AND BatchName = @Batch AND GroupName = @Group AND Semester = @Semester", conn);
+
+            deleteCmd.Parameters.AddWithValue("@Programme", request.Programme);
+            deleteCmd.Parameters.AddWithValue("@Batch", request.Batch);
+            deleteCmd.Parameters.AddWithValue("@Group", request.Group);
+            deleteCmd.Parameters.AddWithValue("@Semester", request.Semester);
+
+            await deleteCmd.ExecuteNonQueryAsync();
+
+            // Step 2: Insert new order
+            for (int i = 0; i < request.SubjectIds.Count; i++)
+            {
+                var insertCmd = new SqlCommand(@"
+            INSERT INTO CourseAssignments (ProgrammeName, BatchName, GroupName, Semester, CourseId, DisplayOrder)
+            VALUES (@Programme, @Batch, @Group, @Semester, @CourseId, @DisplayOrder)", conn);
+
+                insertCmd.Parameters.AddWithValue("@Programme", request.Programme);
+                insertCmd.Parameters.AddWithValue("@Batch", request.Batch);
+                insertCmd.Parameters.AddWithValue("@Group", request.Group);
+                insertCmd.Parameters.AddWithValue("@Semester", request.Semester);
+                insertCmd.Parameters.AddWithValue("@CourseId", request.SubjectIds[i]);
+                insertCmd.Parameters.AddWithValue("@DisplayOrder", i + 1);
+
+                await insertCmd.ExecuteNonQueryAsync();
+            }
+
+            return Ok(new { message = "Subjects assigned successfully." });
+        }
+
+        [HttpGet("AssignedSubjects")]
+        public async Task<IActionResult> GetAssignedSubjects(string programme, string batch, string group, int semester)
+        {
+            var result = new List<object>();
+            using var conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
+            var cmd = new SqlCommand(@"
+        SELECT c.*
+        FROM CourseAssignments ca
+        JOIN Courses c ON ca.CourseId = c.CourseId
+        WHERE ca.ProgrammeName = @Programme AND ca.BatchName = @Batch AND ca.GroupName = @Group AND ca.Semester = @Semester
+        ORDER BY ca.DisplayOrder", conn);
+
+            cmd.Parameters.AddWithValue("@Programme", programme);
+            cmd.Parameters.AddWithValue("@Batch", batch);
+            cmd.Parameters.AddWithValue("@Group", group);
+            cmd.Parameters.AddWithValue("@Semester", semester);
+
+            await conn.OpenAsync();
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+                result.Add(ReadRow(reader));
+
+            return Ok(result);
+        }
+        [HttpPost("AssignSubjectsById")]
+        public async Task<IActionResult> AssignSubjectsById([FromBody] SubjectAssignmentByIdRequest request)
+        {
+            using var conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
+            await conn.OpenAsync();
+
+            // Step 1: Delete previous subject assignments for the same combination
+            var deleteCmd = new SqlCommand(@"
+        DELETE FROM SubjectAssignments
+        WHERE ProgrammeId = @ProgrammeId AND BatchId = @BatchId AND GroupId = @GroupId AND Semester = @Semester", conn);
+
+            deleteCmd.Parameters.AddWithValue("@ProgrammeId", request.ProgrammeId);
+            deleteCmd.Parameters.AddWithValue("@BatchId", request.BatchId);
+            deleteCmd.Parameters.AddWithValue("@GroupId", request.GroupId);
+            deleteCmd.Parameters.AddWithValue("@Semester", request.Semester);
+
+            await deleteCmd.ExecuteNonQueryAsync();
+
+            // Step 2: Insert new subject assignments
+            for (int i = 0; i < request.SubjectIds.Count; i++)
+            {
+                var insertCmd = new SqlCommand(@"
+            INSERT INTO SubjectAssignments (ProgrammeId, BatchId, GroupId, Semester, CourseId, DisplayOrder)
+            VALUES (@ProgrammeId, @BatchId, @GroupId, @Semester, @CourseId, @DisplayOrder)", conn);
+
+                insertCmd.Parameters.AddWithValue("@ProgrammeId", request.ProgrammeId);
+                insertCmd.Parameters.AddWithValue("@BatchId", request.BatchId);
+                insertCmd.Parameters.AddWithValue("@GroupId", request.GroupId);
+                insertCmd.Parameters.AddWithValue("@Semester", request.Semester);
+                insertCmd.Parameters.AddWithValue("@CourseId", request.SubjectIds[i]);
+                insertCmd.Parameters.AddWithValue("@DisplayOrder", i + 1);
+
+                await insertCmd.ExecuteNonQueryAsync();
+            }
+
+            return Ok(new { message = "Subjects assigned successfully to SubjectAssignments table." });
+        }
+
+
+        public class SubjectAssignmentRequest
+        {
+            public string Programme { get; set; }
+            public string Batch { get; set; }
+            public string Group { get; set; }
+            public int Semester { get; set; }
+            public List<int> SubjectIds { get; set; }
         }
 
 

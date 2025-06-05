@@ -34,7 +34,8 @@ namespace LMS.Controllers
                     {
                         UserId = reader.GetInt32(0),
                         Username = reader.GetString(1),
-                        Email = reader.GetString(2)
+                        Email = reader.GetString(2),
+                        Name = reader.GetString(3) +" " + reader.GetString(4)
                     });
                 }
             }

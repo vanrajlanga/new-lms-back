@@ -9,7 +9,7 @@ BEGIN
     CREATE PROCEDURE [dbo].[sp_Admin_GetAllStudents]
     AS
     BEGIN
-        SELECT UserId, Username, Email
+        SELECT UserId, Username, Email , FirstName , LastName
         FROM Users
         WHERE Role = ''Student'';
     END

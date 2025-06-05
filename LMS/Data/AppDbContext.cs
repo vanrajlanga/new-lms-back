@@ -65,6 +65,7 @@ namespace LMS.Data
         public DbSet<Examination> Examinations { get; set; }
         public DbSet<StudentMark> StudentMarks { get; set; }
         public DbSet<SemesterFeeTemplate> SemesterFeeTemplates { get; set; }
+        public DbSet<SubjectAssignment> SubjectAssignments { get; set; }
 
 
 
@@ -101,7 +102,7 @@ namespace LMS.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-           
+            modelBuilder.Entity<SubjectAssignment>().ToTable("SubjectAssignments");
 
             modelBuilder.Entity<Course>()
                .HasMany(c => c.AssignedUsers)

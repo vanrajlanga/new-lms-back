@@ -230,6 +230,9 @@ namespace LMS.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("FileUrl")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("ISBN")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1467,6 +1470,37 @@ namespace LMS.Migrations
                     b.HasIndex("StudentId");
 
                     b.ToTable("StudentProgresses");
+                });
+
+            modelBuilder.Entity("LMS.Models.SubjectAssignment", b =>
+                {
+                    b.Property<int>("SubjectAssignmentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SubjectAssignmentId"));
+
+                    b.Property<int>("BatchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CourseId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GroupId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProgrammeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Semester")
+                        .HasColumnType("int");
+
+                    b.HasKey("SubjectAssignmentId");
+
+                    b.ToTable("SubjectAssignments", (string)null);
                 });
 
             modelBuilder.Entity("LMS.Models.SupportTicket", b =>

@@ -107,7 +107,7 @@ END
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[sp_Meeting_GetRelevant]') AND type IN (N'P', N'PC'))
 BEGIN
 EXEC('
-ALTER PROCEDURE [dbo].[sp_Meeting_GetRelevant]
+CREATE PROCEDURE [dbo].[sp_Meeting_GetRelevant]
     @UserId INT
 AS
 BEGIN

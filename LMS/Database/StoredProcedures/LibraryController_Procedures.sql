@@ -91,3 +91,25 @@ BEGIN
 END
 ')
 END
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[sp_Library_AddBookWithFile]') AND type IN (N'P', N'PC'))
+BEGIN
+EXEC('
+CREATE PROCEDURE [dbo].[sp_Library_AddBookWithFile]
+  @Title NVARCHAR(255),
+  @Author NVARCHAR(255),
+  @ISBN NVARCHAR(100),
+  @Category NVARCHAR(100),
+  @TotalCopies INT,
+  @AvailableCopies INT,
+  @FileUrl NVARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO Books (Title, Author, ISBN, Category, TotalCopies, AvailableCopies, FileUrl)
+    VALUES (@Title, @Author, @ISBN, @Category, @TotalCopies, @AvailableCopies, @FileUrl);
+
+    SELECT * FROM Books WHERE BookId = SCOPE_IDENTITY();
+END
+')
+END
+

@@ -92,6 +92,51 @@ namespace LMS.Controllers
             using var reader = await cmd.ExecuteReaderAsync();
             return await reader.ReadAsync() ? Ok(ReadRow(reader)) : NotFound();
         }
+        [HttpPost("books/upload")]
+        public async Task<IActionResult> AddBookWithPdf([FromForm] IFormFile? pdf,
+    [FromForm] string title,
+    [FromForm] string author,
+    [FromForm] string isbn,
+    [FromForm] string category,
+    [FromForm] int totalCopies,
+    [FromForm] int availableCopies)
+        {
+            string? fileUrl = null;
+
+            if (pdf != null && pdf.Length > 0)
+            {
+                string uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "library");
+                if (!Directory.Exists(uploadPath)) Directory.CreateDirectory(uploadPath);
+
+                string fileName = Path.GetFileName(pdf.FileName); // ✅ use original name
+
+                string filePath = Path.Combine(uploadPath, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                    await pdf.CopyToAsync(stream);
+
+                fileUrl = $"{Request.Scheme}://{Request.Host}/uploads/library/{fileName}";
+            }
+
+            using var conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
+            using var cmd = new SqlCommand("sp_Library_AddBookWithFile", conn)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+
+            cmd.Parameters.AddWithValue("@Title", title);
+            cmd.Parameters.AddWithValue("@Author", author);
+            cmd.Parameters.AddWithValue("@ISBN", isbn);
+            cmd.Parameters.AddWithValue("@Category", category);
+            cmd.Parameters.AddWithValue("@TotalCopies", totalCopies);
+            cmd.Parameters.AddWithValue("@AvailableCopies", availableCopies);
+            cmd.Parameters.AddWithValue("@FileUrl", (object?)fileUrl ?? DBNull.Value);
+
+            await conn.OpenAsync();
+            using var reader = await cmd.ExecuteReaderAsync();
+            return await reader.ReadAsync() ? Ok(ReadRow(reader)) : BadRequest();
+        }
+
 
         [HttpDelete("books/{id}")]
         public async Task<IActionResult> DeleteBook(int id)
